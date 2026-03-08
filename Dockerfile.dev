@@ -1,0 +1,16 @@
+FROM eclipse-temurin:21-jdk-alpine
+
+WORKDIR /app
+
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+
+RUN chmod +x gradlew
+
+# 의존성 캐시
+RUN ./gradlew dependencies --no-daemon
+
+EXPOSE 8080
+
+ENTRYPOINT ["./gradlew","bootRun","--no-daemon","-t"]

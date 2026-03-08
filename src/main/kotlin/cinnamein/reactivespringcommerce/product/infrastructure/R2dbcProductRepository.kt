@@ -1,0 +1,5 @@
+package cinnamein.reactivespringcommerce.product.infrastructure
+
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+
+interface R2dbcProductRepository : CoroutineCrudRepository<ProductEntity, Long>

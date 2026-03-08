@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: reactive-spring-commerce
+
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:commerce}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+
+server:
+  port: 8080
+
+logging:
+  level:
+    cinnamein: DEBUG
+    org.springframework.r2dbc: DEBUG

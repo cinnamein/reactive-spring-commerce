@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: commerce
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: commerce
+      DB_USER: postgres
+      DB_PASS: postgres
+    volumes:
+      - ./src:/app/src          # 소스 변경 시 자동 감지
+      - gradle-cache:/home/gradle/.gradle
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  gradle-cache:               # 의존성 캐시 유지

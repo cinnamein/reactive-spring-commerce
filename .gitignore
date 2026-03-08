@@ -1,27 +1,35 @@
-# Compiled class file
-*.class
+# ── Gradle ──
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Log file
+# ── Kotlin ──
+.kotlin/
+
+# ── IDE ──
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+*.swp
+*~
+
+# ── Spring Boot ──
 *.log
 
-# BlueJ files
-*.ctxt
+# ── OS ──
+.DS_Store
+Thumbs.db
+ehthumbs.db
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# ── Docker ──
+docker-compose.override.yml
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# ── Env ──
+.env
+.env.local
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# ── JVM crash logs ──
 hs_err_pid*
 replay_pid*
-
-# Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
-.kotlin/
