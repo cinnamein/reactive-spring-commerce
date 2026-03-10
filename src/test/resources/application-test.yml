@@ -1,0 +1,9 @@
+spring:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+
+logging:
+  level:
+    cinnamein: DEBUG

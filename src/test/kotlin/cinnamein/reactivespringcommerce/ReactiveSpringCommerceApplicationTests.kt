@@ -9,5 +9,4 @@ class ReactiveSpringCommerceApplicationTests {
     @Test
     fun contextLoads() {
     }
-
 }
