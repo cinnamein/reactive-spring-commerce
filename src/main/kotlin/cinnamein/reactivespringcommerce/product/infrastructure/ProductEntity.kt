@@ -10,4 +10,6 @@ data class ProductEntity(
     val name: String,
     val price: Long,
     val seller: String,
+    val description: String = "",
+    val status: String = "DRAFT",
 )

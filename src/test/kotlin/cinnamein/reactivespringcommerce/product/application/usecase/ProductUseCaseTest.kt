@@ -2,10 +2,10 @@ package cinnamein.reactivespringcommerce.product.application.usecase
 
 import cinnamein.reactivespringcommerce.product.application.dto.CreateProductRequest
 import cinnamein.reactivespringcommerce.product.application.dto.UpdateProductRequest
-import cinnamein.reactivespringcommerce.product.domain.InvalidProductException
-import cinnamein.reactivespringcommerce.product.domain.Product
-import cinnamein.reactivespringcommerce.product.domain.ProductNotFoundException
-import cinnamein.reactivespringcommerce.product.domain.ProductRepository
+import cinnamein.reactivespringcommerce.product.domain.exception.InvalidProductException
+import cinnamein.reactivespringcommerce.product.domain.model.Product
+import cinnamein.reactivespringcommerce.product.domain.exception.ProductNotFoundException
+import cinnamein.reactivespringcommerce.product.domain.repository.ProductRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

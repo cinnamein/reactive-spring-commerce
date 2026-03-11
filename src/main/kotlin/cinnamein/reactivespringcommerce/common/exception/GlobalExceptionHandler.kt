@@ -1,8 +1,8 @@
 package cinnamein.reactivespringcommerce.common.exception
 
 import cinnamein.reactivespringcommerce.common.response.ApiResponse
-import cinnamein.reactivespringcommerce.product.domain.InvalidProductException
-import cinnamein.reactivespringcommerce.product.domain.ProductNotFoundException
+import cinnamein.reactivespringcommerce.product.domain.exception.InvalidProductException
+import cinnamein.reactivespringcommerce.product.domain.exception.ProductNotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity

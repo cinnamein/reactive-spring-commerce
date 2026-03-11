@@ -1,5 +1,7 @@
 package cinnamein.reactivespringcommerce.product.domain
 
+import cinnamein.reactivespringcommerce.product.domain.exception.InvalidProductException
+import cinnamein.reactivespringcommerce.product.domain.model.Product
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test

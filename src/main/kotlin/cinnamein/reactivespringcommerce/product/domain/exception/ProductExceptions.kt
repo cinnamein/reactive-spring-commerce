@@ -1,4 +1,4 @@
-package cinnamein.reactivespringcommerce.product.domain
+package cinnamein.reactivespringcommerce.product.domain.exception
 
 class InvalidProductException(message: String) : RuntimeException(message)
 

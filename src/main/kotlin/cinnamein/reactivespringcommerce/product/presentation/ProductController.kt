@@ -55,4 +55,36 @@ class ProductController(
         productUseCase.deleteProduct(id)
         return ResponseEntity.ok(ApiResponse.noContent())
     }
+
+    @PatchMapping("/{id}/publish")
+    suspend fun publishProduct(
+        @PathVariable id: Long,
+    ): ResponseEntity<ApiResponse<ProductResponse>> {
+        val result = productUseCase.publishProduct(id)
+        return ResponseEntity.ok(ApiResponse.ok(result, "판매 개시"))
+    }
+
+    @PatchMapping("/{id}/sold-out")
+    suspend fun soldOutProduct(
+        @PathVariable id: Long,
+    ): ResponseEntity<ApiResponse<ProductResponse>> {
+        val result = productUseCase.soldOutProduct(id)
+        return ResponseEntity.ok(ApiResponse.ok(result, "품절 처리"))
+    }
+
+    @PatchMapping("/{id}/discontinue")
+    suspend fun discontinueProduct(
+        @PathVariable id: Long,
+    ): ResponseEntity<ApiResponse<ProductResponse>> {
+        val result = productUseCase.discontinueProduct(id)
+        return ResponseEntity.ok(ApiResponse.ok(result, "판매 중지"))
+    }
+
+    @PatchMapping("/{id}/hide")
+    suspend fun hideProduct(
+        @PathVariable id: Long,
+    ): ResponseEntity<ApiResponse<ProductResponse>> {
+        val result = productUseCase.hideProduct(id)
+        return ResponseEntity.ok(ApiResponse.ok(result, "숨김 처리"))
+    }
 }

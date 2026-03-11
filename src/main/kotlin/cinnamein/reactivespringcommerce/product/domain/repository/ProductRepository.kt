@@ -1,4 +1,6 @@
-package cinnamein.reactivespringcommerce.product.domain
+package cinnamein.reactivespringcommerce.product.domain.repository
+
+import cinnamein.reactivespringcommerce.product.domain.model.Product
 
 interface ProductRepository {
     suspend fun save(product: Product): Product

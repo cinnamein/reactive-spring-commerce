@@ -1,48 +1,70 @@
 package cinnamein.reactivespringcommerce.product.infrastructure
 
-import cinnamein.reactivespringcommerce.product.domain.Product
-import cinnamein.reactivespringcommerce.product.domain.ProductRepository
+import cinnamein.reactivespringcommerce.product.domain.model.Product
+import cinnamein.reactivespringcommerce.product.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import org.springframework.stereotype.Repository
 
 @Repository
 class ProductRepositoryImpl(
-    private val r2dbcRepository: R2dbcProductRepository,
+    private val productRepo: R2dbcProductRepository,
+    private val optionRepo: R2dbcProductOptionRepository,
+    private val imageRepo: R2dbcProductImageRepository,
 ) : ProductRepository {
 
     override suspend fun save(product: Product): Product {
-        val entity = ProductMapper.toEntity(product)
-        val saved = r2dbcRepository.save(entity)
-        return ProductMapper.toDomain(saved)
+        val savedProduct = productRepo.save(ProductMapper.toProductEntity(product))
+        val productId = savedProduct.id!!
+
+        ProductMapper.toOptionEntities(productId, product.options)
+            .forEach { optionRepo.save(it) }
+
+        ProductMapper.toImageEntities(productId, product.images)
+            .forEach { imageRepo.save(it) }
+
+        return findById(productId)!!
     }
 
     override suspend fun findById(id: Long): Product? {
-        return r2dbcRepository.findById(id)?.let { ProductMapper.toDomain(it) }
+        val productEntity = productRepo.findById(id) ?: return null
+        val options = optionRepo.findAllByProductId(id).toList()
+        val images = imageRepo.findAllByProductId(id).toList()
+        return ProductMapper.toDomain(productEntity, options, images)
     }
 
     override suspend fun findAll(): List<Product> {
-        return r2dbcRepository.findAll()
-            .map { ProductMapper.toDomain(it) }
+        return productRepo.findAll()
+            .map { entity ->
+                val options = optionRepo.findAllByProductId(entity.id!!).toList()
+                val images = imageRepo.findAllByProductId(entity.id).toList()
+                ProductMapper.toDomain(entity, options, images)
+            }
             .toList()
     }
 
     override suspend fun update(product: Product): Product {
-        val entity = ProductEntity(
-            id = product.id,
-            name = product.name,
-            price = product.price,
-            seller = product.seller,
-        )
-        val saved = r2dbcRepository.save(entity)
-        return ProductMapper.toDomain(saved)
+        val productId = product.id!!
+
+        productRepo.save(ProductMapper.toProductEntity(product))
+
+        optionRepo.deleteAllByProductId(productId)
+        imageRepo.deleteAllByProductId(productId)
+
+        ProductMapper.toOptionEntities(productId, product.options)
+            .forEach { optionRepo.save(it) }
+
+        ProductMapper.toImageEntities(productId, product.images)
+            .forEach { imageRepo.save(it) }
+
+        return findById(productId)!!
     }
 
     override suspend fun deleteById(id: Long) {
-        r2dbcRepository.deleteById(id)
+        productRepo.deleteById(id)
     }
 
     override suspend fun existsById(id: Long): Boolean {
-        return r2dbcRepository.existsById(id)
+        return productRepo.existsById(id)
     }
 }
