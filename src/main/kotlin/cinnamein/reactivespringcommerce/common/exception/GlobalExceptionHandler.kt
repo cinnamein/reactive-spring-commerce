@@ -6,6 +6,7 @@ import cinnamein.reactivespringcommerce.product.domain.exception.ProductNotFound
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.bind.support.WebExchangeBindException
@@ -34,6 +35,16 @@ class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponse.error(400, ex.message ?: "잘못된 상품 정보입니다."))
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    suspend fun handleMessageNotReadable(
+        ex: HttpMessageNotReadableException
+    ): ResponseEntity<ApiResponse<Unit>> {
+        log.warn("Malformed request body: {}", ex.message)
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error(400, "잘못된 요청입니다. 허용되지 않는 값이 포함되어 있습니다."))
     }
 
     @ExceptionHandler(WebExchangeBindException::class)
