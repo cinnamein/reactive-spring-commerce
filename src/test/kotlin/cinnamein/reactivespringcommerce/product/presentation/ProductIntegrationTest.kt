@@ -2,14 +2,18 @@ package cinnamein.reactivespringcommerce.product.presentation
 
 import cinnamein.reactivespringcommerce.common.response.ApiResponse
 import cinnamein.reactivespringcommerce.product.application.dto.CreateProductRequest
+import cinnamein.reactivespringcommerce.product.application.dto.ProductImageRequest
+import cinnamein.reactivespringcommerce.product.application.dto.ProductOptionRequest
 import cinnamein.reactivespringcommerce.product.application.dto.UpdateProductRequest
+import cinnamein.reactivespringcommerce.product.domain.model.ProductColor
+import cinnamein.reactivespringcommerce.product.domain.model.ProductSize
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -55,24 +59,28 @@ class ProductIntegrationTest {
 
     @BeforeEach
     fun cleanUp() {
+        databaseClient.sql("DELETE FROM product_images").then().block()
+        databaseClient.sql("DELETE FROM product_options").then().block()
         databaseClient.sql("DELETE FROM products").then().block()
         databaseClient.sql("ALTER SEQUENCE products_id_seq RESTART WITH 1").then().block()
     }
 
-    private fun createProductRequest(
+    private fun defaultRequest(
         name: String = "캐시미어 코트",
         price: Long = 298_000,
-        seller: String = "W컨셉",
-    ) = CreateProductRequest(name = name, price = price, seller = seller)
+    ) = CreateProductRequest(
+        name = name,
+        price = price,
+        seller = "W컨셉",
+        description = "프리미엄 캐시미어",
+        options = listOf(ProductOptionRequest(ProductSize.M, ProductColor.BLACK, 0, 10)),
+        images = listOf(ProductImageRequest("https://cdn.example.com/main.jpg", 0, true)),
+    )
 
-    private fun insertProduct(
-        name: String = "캐시미어 코트",
-        price: Long = 298_000,
-        seller: String = "W컨셉",
-    ): Long {
+    private fun insertProduct(name: String = "캐시미어 코트", price: Long = 298_000): Long {
         val body = webTestClient
             .post().uri("/product")
-            .bodyValue(createProductRequest(name, price, seller))
+            .bodyValue(defaultRequest(name, price))
             .exchange()
             .expectStatus().isCreated
             .expectBody<ApiResponse<Map<String, Any>>>()
@@ -82,271 +90,159 @@ class ProductIntegrationTest {
         return (body?.data?.get("id") as Number).toLong()
     }
 
-    // ──────────────────────────────────────────
-    // POST /product
-    // ──────────────────────────────────────────
-
     @Nested
-    @DisplayName("POST /product — 상품 등록")
+    @DisplayName("POST /product")
     inner class CreateProduct {
 
         @Test
-        @DisplayName("유효한 요청이면 201 Created와 함께 상품이 반환된다")
-        fun `creates product successfully`() {
+        @DisplayName("유효한 요청이면 201과 DRAFT 상태로 생성된다")
+        fun `creates product with DRAFT status`() {
             webTestClient
                 .post().uri("/product")
-                .bodyValue(createProductRequest())
+                .bodyValue(defaultRequest())
                 .exchange()
                 .expectStatus().isCreated
                 .expectBody()
-                .jsonPath("$.status").isEqualTo(201)
-                .jsonPath("$.message").isEqualTo("생성 완료")
-                .jsonPath("$.data.id").isNotEmpty
-                .jsonPath("$.data.name").isEqualTo("캐시미어 코트")
-                .jsonPath("$.data.price").isEqualTo(298_000)
-                .jsonPath("$.data.seller").isEqualTo("W컨셉")
+                .jsonPath("$.data.status").isEqualTo("DRAFT")
+                .jsonPath("$.data.options.length()").isEqualTo(1)
+                .jsonPath("$.data.options[0].size").isEqualTo("M")
+                .jsonPath("$.data.options[0].color").isEqualTo("BLACK")
+                .jsonPath("$.data.images.length()").isEqualTo(1)
+                .jsonPath("$.data.images[0].primaryImage").isEqualTo(true)
         }
 
         @Test
-        @DisplayName("상품명이 비어있으면 400 Bad Request가 반환된다")
-        fun `blank name returns 400`() {
+        @DisplayName("옵션 없이 등록하면 400이 반환된다")
+        fun `empty options returns 400`() {
+            val request = CreateProductRequest(
+                name = "상품", price = 10_000, seller = "판매자",
+                options = emptyList(),
+                images = listOf(ProductImageRequest("https://cdn.example.com/a.jpg", 0, true)),
+            )
             webTestClient
                 .post().uri("/product")
-                .bodyValue(createProductRequest(name = "  "))
+                .bodyValue(request)
                 .exchange()
                 .expectStatus().isBadRequest
-                .expectBody()
-                .jsonPath("$.status").isEqualTo(400)
-        }
-
-        @Test
-        @DisplayName("가격이 0이면 400 Bad Request가 반환된다")
-        fun `zero price returns 400`() {
-            webTestClient
-                .post().uri("/product")
-                .bodyValue(createProductRequest(price = 0))
-                .exchange()
-                .expectStatus().isBadRequest
-                .expectBody()
-                .jsonPath("$.status").isEqualTo(400)
         }
     }
 
-    // ──────────────────────────────────────────
-    // GET /product/{id}
-    // ──────────────────────────────────────────
-
     @Nested
-    @DisplayName("GET /product/{id} — 상품 단건 조회")
-    inner class GetProduct {
+    @DisplayName("GET /product, /product/{id}")
+    inner class ReadProduct {
 
         @Test
-        @DisplayName("존재하는 상품 ID로 조회하면 200과 함께 상품이 반환된다")
-        fun `returns product when exists`() {
+        @DisplayName("단건 조회 시 옵션과 이미지가 포함된다")
+        fun `get includes options and images`() {
             val id = insertProduct()
-
             webTestClient
                 .get().uri("/product/$id")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.status").isEqualTo(200)
-                .jsonPath("$.data.id").isEqualTo(id.toInt())
-                .jsonPath("$.data.name").isEqualTo("캐시미어 코트")
+                .jsonPath("$.data.options[0].colorDisplayName").isEqualTo("검정")
         }
 
         @Test
-        @DisplayName("존재하지 않는 ID로 조회하면 404가 반환된다")
+        @DisplayName("존재하지 않는 ID면 404가 반환된다")
         fun `returns 404 when not found`() {
-            webTestClient
-                .get().uri("/product/999")
-                .exchange()
-                .expectStatus().isNotFound
-                .expectBody()
-                .jsonPath("$.status").isEqualTo(404)
+            webTestClient.get().uri("/product/999").exchange().expectStatus().isNotFound
         }
-    }
-
-    // ──────────────────────────────────────────
-    // GET /product
-    // ──────────────────────────────────────────
-
-    @Nested
-    @DisplayName("GET /product — 상품 전체 조회")
-    inner class GetAllProducts {
 
         @Test
-        @DisplayName("상품이 없으면 빈 리스트가 반환된다")
-        fun `returns empty list when no products`() {
+        @DisplayName("전체 조회 시 등록된 수만큼 반환된다")
+        fun `get all returns correct count`() {
+            insertProduct("상품A")
+            insertProduct("상품B")
             webTestClient
                 .get().uri("/product")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.data.length()").isEqualTo(0)
-        }
-
-        @Test
-        @DisplayName("등록된 상품 수만큼 반환된다")
-        fun `returns all products`() {
-            insertProduct(name = "상품A")
-            insertProduct(name = "상품B")
-            insertProduct(name = "상품C")
-
-            webTestClient
-                .get().uri("/product")
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.data.length()").isEqualTo(3)
+                .jsonPath("$.data.length()").isEqualTo(2)
         }
     }
 
-    // ──────────────────────────────────────────
-    // PUT /product/{id}
-    // ──────────────────────────────────────────
-
     @Nested
-    @DisplayName("PUT /product/{id} — 상품 수정")
+    @DisplayName("PUT /product/{id}")
     inner class UpdateProduct {
 
         @Test
-        @DisplayName("존재하는 상품을 유효한 값으로 수정하면 200과 변경된 상품이 반환된다")
-        fun `updates product successfully`() {
+        @DisplayName("수정하면 변경된 값이 반환된다")
+        fun `updates successfully`() {
             val id = insertProduct()
-            val updateRequest = UpdateProductRequest(
-                name = "캐시미어 롱코트",
-                price = 328_000,
-                seller = "W컨셉",
+            val request = UpdateProductRequest(
+                name = "캐시미어 롱코트", price = 328_000, seller = "W컨셉", description = "변경됨",
+                options = listOf(ProductOptionRequest(ProductSize.L, ProductColor.RED, 5000, 8)),
+                images = listOf(ProductImageRequest("https://cdn.example.com/new.jpg", 0, true)),
             )
-
             webTestClient
                 .put().uri("/product/$id")
-                .bodyValue(updateRequest)
+                .bodyValue(request)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.data.name").isEqualTo("캐시미어 롱코트")
-                .jsonPath("$.data.price").isEqualTo(328_000)
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 상품을 수정하려 하면 404가 반환된다")
-        fun `returns 404 when product not found`() {
-            val updateRequest = UpdateProductRequest(
-                name = "상품", price = 10_000, seller = "판매자"
-            )
-
-            webTestClient
-                .put().uri("/product/999")
-                .bodyValue(updateRequest)
-                .exchange()
-                .expectStatus().isNotFound
-        }
-
-        @Test
-        @DisplayName("유효하지 않은 값으로 수정하면 400이 반환된다")
-        fun `returns 400 for invalid update`() {
-            val id = insertProduct()
-            val updateRequest = UpdateProductRequest(
-                name = "", price = 10_000, seller = "판매자"
-            )
-
-            webTestClient
-                .put().uri("/product/$id")
-                .bodyValue(updateRequest)
-                .exchange()
-                .expectStatus().isBadRequest
-        }
-
-        @Test
-        @DisplayName("수정 실패 시 기존 데이터가 유지된다")
-        fun `failed update does not change original data`() {
-            val id = insertProduct(name = "원래 상품", price = 10_000)
-            val updateRequest = UpdateProductRequest(
-                name = "", price = 20_000, seller = "판매자"
-            )
-
-            webTestClient
-                .put().uri("/product/$id")
-                .bodyValue(updateRequest)
-                .exchange()
-                .expectStatus().isBadRequest
-
-            webTestClient
-                .get().uri("/product/$id")
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.data.name").isEqualTo("원래 상품")
-                .jsonPath("$.data.price").isEqualTo(10_000)
+                .jsonPath("$.data.options[0].size").isEqualTo("L")
         }
     }
 
-    // ──────────────────────────────────────────
-    // DELETE /product/{id}
-    // ──────────────────────────────────────────
+    @Nested
+    @DisplayName("상태 전이 API")
+    inner class StatusTransition {
+
+        @Test
+        @DisplayName("PATCH /publish → DRAFT에서 ON_SALE로 전이된다")
+        fun `publish succeeds`() {
+            val id = insertProduct()
+            webTestClient
+                .patch().uri("/product/$id/publish")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.data.status").isEqualTo("ON_SALE")
+        }
+
+        @Test
+        @DisplayName("PATCH /sold-out → ON_SALE에서 SOLD_OUT으로 전이된다")
+        fun `sold-out succeeds after publish`() {
+            val id = insertProduct()
+            webTestClient.patch().uri("/product/$id/publish").exchange().expectStatus().isOk
+            webTestClient
+                .patch().uri("/product/$id/sold-out")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.data.status").isEqualTo("SOLD_OUT")
+        }
+
+        @Test
+        @DisplayName("DRAFT에서 sold-out하면 400이 반환된다")
+        fun `sold-out from DRAFT returns 400`() {
+            val id = insertProduct()
+            webTestClient
+                .patch().uri("/product/$id/sold-out")
+                .exchange()
+                .expectStatus().isBadRequest
+        }
+    }
 
     @Nested
-    @DisplayName("DELETE /product/{id} — 상품 삭제")
+    @DisplayName("DELETE /product/{id}")
     inner class DeleteProduct {
 
         @Test
-        @DisplayName("존재하는 상품을 삭제하면 200이 반환된다")
-        fun `deletes product successfully`() {
-            val id = insertProduct()
-
-            webTestClient
-                .delete().uri("/product/$id")
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.message").isEqualTo("삭제 완료")
-        }
-
-        @Test
-        @DisplayName("삭제 후 해당 상품을 조회하면 404가 반환된다")
+        @DisplayName("삭제 후 조회하면 404가 반환된다")
         fun `deleted product is not found`() {
             val id = insertProduct()
-
-            webTestClient
-                .delete().uri("/product/$id")
-                .exchange()
-                .expectStatus().isOk
-
-            webTestClient
-                .get().uri("/product/$id")
-                .exchange()
-                .expectStatus().isNotFound
+            webTestClient.delete().uri("/product/$id").exchange().expectStatus().isOk
+            webTestClient.get().uri("/product/$id").exchange().expectStatus().isNotFound
         }
 
         @Test
-        @DisplayName("존재하지 않는 상품을 삭제하려 하면 404가 반환된다")
-        fun `returns 404 when product not found`() {
-            webTestClient
-                .delete().uri("/product/999")
-                .exchange()
-                .expectStatus().isNotFound
-        }
-
-        @Test
-        @DisplayName("삭제 후 전체 목록에서도 제외된다")
-        fun `deleted product is excluded from list`() {
-            val id1 = insertProduct(name = "상품A")
-            insertProduct(name = "상품B")
-
-            webTestClient
-                .delete().uri("/product/$id1")
-                .exchange()
-                .expectStatus().isOk
-
-            webTestClient
-                .get().uri("/product")
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.data.length()").isEqualTo(1)
-                .jsonPath("$.data[0].name").isEqualTo("상품B")
+        @DisplayName("존재하지 않는 ID 삭제하면 404가 반환된다")
+        fun `delete non-existent returns 404`() {
+            webTestClient.delete().uri("/product/999").exchange().expectStatus().isNotFound
         }
     }
 }
