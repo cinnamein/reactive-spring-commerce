@@ -37,6 +37,7 @@ dependencies {
 
     // Database
     implementation("org.postgresql:r2dbc-postgresql")
+    implementation("io.r2dbc:r2dbc-pool")
 
     //  Test (Core) 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

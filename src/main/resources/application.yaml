@@ -6,6 +6,13 @@ spring:
     url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:commerce}
     username: ${DB_USER:postgres}
     password: ${DB_PASS:postgres}
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 50
+      max-idle-time: 30m
+      validation-query: SELECT 1
+
 
   sql:
     init:
