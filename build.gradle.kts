@@ -33,6 +33,7 @@ dependencies {
     // Reactive, JSON
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 
     // Database
     implementation("org.postgresql:r2dbc-postgresql")

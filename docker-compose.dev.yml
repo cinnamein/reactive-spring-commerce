@@ -15,6 +15,16 @@ services:
       timeout: 3s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   app:
     build:
       context: .
@@ -27,13 +37,17 @@ services:
       DB_NAME: commerce
       DB_USER: postgres
       DB_PASS: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
-      - ./src:/app/src          # 소스 변경 시 자동 감지
+      - ./src:/app/src
       - gradle-cache:/home/gradle/.gradle
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:
-  gradle-cache:               # 의존성 캐시 유지
+  gradle-cache:
